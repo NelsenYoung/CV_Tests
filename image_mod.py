@@ -1,6 +1,6 @@
 from PIL import Image 
 import numpy as np
-import math
+from MNIST_data_processing import images, labels
 
 def convole(img, kernel, stride, padding, convolution_func):
     # Basic information gathering
@@ -34,8 +34,7 @@ def softmax(x):
     exp_x = np.exp(x - np.max(x))  # Stabilizing to prevent overflow
     return exp_x / np.sum(exp_x)
 
-img = Image.open("pixel_mod_original.jpeg")
-img = img.convert('L')
+img = images[0]
 pixels = np.array(img)
 kernels = [ np.array([[-1, -2, -1],
                     [0, 0, 0],
@@ -84,6 +83,15 @@ res = np.dot(flattened_array, arr)
 softmax_res = softmax(res)
 print(softmax_res)
 
-blurred_img = Image.fromarray(output).convert('RGB')
-blurred_img.save("blurred_image.jpg")
+# COST CALCULATION
+cost = 0
+for i, out in enumerate(softmax_res):
+    if i == labels[0]:
+        cost += (out - 1) ** 2
+    else:
+        cost += (out - 0) ** 2
+print(cost)
+
+# blurred_img = Image.fromarray(output).convert('RGB')
+# blurred_img.save("blurred_image.jpg")
 
