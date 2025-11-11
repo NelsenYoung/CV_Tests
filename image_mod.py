@@ -6,7 +6,6 @@ def convole(img, kernel, stride, padding, convolution_func):
     # Basic information gathering
     h, w = img.shape
     kernel_size = len(kernel)
-    print(img.shape)
     # Set the output size
     output = np.array([])
     output_h = (h + 2 * padding - kernel_size) // stride + 1
@@ -24,40 +23,67 @@ def convole(img, kernel, stride, padding, convolution_func):
 
 def convolution_calc(window, kernel):
     new_pixel = np.sum(window * kernel)
-    if new_pixel < 0:
-        new_pixel = 0
+    new_pixel = max(0, new_pixel)
     return new_pixel
 
 def max_pooling_calc(window, kernel):
     new_pixel = np.max(window)
     return new_pixel
 
+def softmax(x):
+    exp_x = np.exp(x - np.max(x))  # Stabilizing to prevent overflow
+    return exp_x / np.sum(exp_x)
+
 img = Image.open("pixel_mod_original.jpeg")
 img = img.convert('L')
 pixels = np.array(img)
-kernel = np.array([[-1, -2, -1],
+kernels = [ np.array([[-1, -2, -1],
                     [0, 0, 0],
-                    [1, 2, 1]])
+                    [1, 2, 1]]),
+            np.array([[-1, 0, 1],
+                    [-2, 0, 2],
+                    [-1, 0, 1]])]
 channels = []
 
-output = convole(pixels, kernel, 1, 0, convolution_calc)
+# FIRST CONVOLUTION LAYER
+output = convole(pixels, kernels[0], 1, 0, convolution_calc)
 channels.append(output)
 
-kernel = np.array([[-1, 0, 1],
-                    [-2, 0, 2],
-                    [-1, 0, 1]])
-output = convole(pixels, kernel, 1, 0, convolution_calc)
+output = convole(pixels, kernels[1], 1, 0, convolution_calc)
 channels.append(output)
 
 pooling_channels = []
-# POOLING LAYER
+# FIRST POOLING LAYER
 for channel in channels:
     kernel = np.array([[0, 0],
                        [0, 0]])
     output = convole(channel, kernel, 2, 0, max_pooling_calc)
     pooling_channels.append(output)
 
-print(output.shape)
+# SECOND CONVOLUTION LAYER
+channels = []
+for i, pooling_channel in enumerate(pooling_channels):
+    output = convole(pooling_channel, kernels[i], 1, 0, convolution_calc)
+    channels.append(output)
+
+pooling_channels = []
+# SECOND POOLING LAYER
+for channel in channels:
+    kernel = np.array([[0, 0],
+                       [0, 0]])
+    output = convole(channel, kernel, 2, 0, max_pooling_calc)
+    pooling_channels.append(output)  
+
+# FLATTEN THE ARRAY
+flattened_array = np.vstack(pooling_channels).ravel()
+
+# FULLY CONNECTED LAYER
+bias = 0
+arr = np.full((flattened_array.size, 10), 0.01)
+res = np.dot(flattened_array, arr)
+softmax_res = softmax(res)
+print(softmax_res)
+
 blurred_img = Image.fromarray(output).convert('RGB')
 blurred_img.save("blurred_image.jpg")
 
